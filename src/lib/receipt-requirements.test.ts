@@ -6,7 +6,7 @@ describe("receipt requirements", () => {
   test("bill barcode encodes exactly thankyou in Code 128", () => {
     expect(RECEIPT_BARCODE_VALUE).toBe("thankyou");
     // Code 128 start B, eight characters, checksum, and stop pattern.
-    expect(receiptBarcodeBits()).toBe("110100100001001111010011110100100100001101001011110010010000101100111010111101001111010010011100100100110100001100011101011");
+    expect(receiptBarcodeBits()).toBe("110100100001001111010010011000010100101100001100001010011000010010110110111101000111101010011110010111101010001100011101011");
   });
   test("Arabic selection changes app, settings, history and receipt labels", () => {
     expect(translate("ar", "Current Order")).toBe("الطلب الحالي");

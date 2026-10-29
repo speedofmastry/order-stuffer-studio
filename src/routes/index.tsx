@@ -24,6 +24,10 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Receipt POS — 80mm Thermal Printer" },
       { name: "description", content: "Manage items, build orders, and print 80mm thermal receipts." },
+      { property: "og:title", content: "Receipt POS — 80mm Thermal Printer" },
+      { property: "og:description", content: "Manage items, build orders, and print 80mm thermal receipts." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Index,
