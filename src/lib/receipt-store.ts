@@ -162,14 +162,38 @@ export async function getInvoiceLines(invoiceId: string): Promise<InvoiceLine[]>
 }
 
 export function useShop() {
-  const [shop, setShop] = useState<ShopInfo>(defaultShop);
-  const [ready, setReady] = useState(false);
+  const [shop, setShopState] = useState<ShopInfo>(defaultShop);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    setShop(read<ShopInfo>(SHOP_KEY, defaultShop));
-    setReady(true);
+    void (async () => {
+      const { data } = await supabase
+        .from("shop_settings")
+        .select("name, address, phone, footer")
+        .eq("id", 1)
+        .maybeSingle();
+      if (data) {
+        setShopState(data);
+      } else {
+        // First run: carry over details saved on this device by the old version.
+        const local = read<ShopInfo | null>(SHOP_KEY, null);
+        if (local) {
+          const merged = { ...defaultShop, ...local };
+          setShopState(merged);
+          await supabase.from("shop_settings").upsert({ id: 1, ...merged });
+        }
+      }
+      setLoading(false);
+    })();
   }, []);
-  useEffect(() => {
-    if (ready) localStorage.setItem(SHOP_KEY, JSON.stringify(shop));
-  }, [shop, ready]);
-  return { shop, setShop };
+
+  const setShop = useCallback(async (next: ShopInfo) => {
+    const { error } = await supabase
+      .from("shop_settings")
+      .upsert({ id: 1, ...next, updated_at: new Date().toISOString() });
+    if (error) throw error;
+    setShopState(next);
+  }, []);
+
+  return { shop, setShop, loading };
 }
