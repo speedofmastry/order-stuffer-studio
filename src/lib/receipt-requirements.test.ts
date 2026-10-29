@@ -16,3 +16,19 @@ describe("receipt requirements", () => {
     expect(translate("en", "Current Order")).toBe("Current Order");
   });
 });
+import { receiptTotals, receiptFileName, receiptLocale } from "./receipt-image";
+
+describe("shared receipt", () => {
+  test("totals add price × quantity for every line", () => {
+    const lines = [
+      { item: { id: "a", name: "Coffee", price: 4.5 }, qty: 2 },
+      { item: { id: "b", name: "Cake", price: 3 }, qty: 1 },
+    ];
+    expect(receiptTotals(lines)).toEqual({ total: 12, itemCount: 3 });
+  });
+  test("share button and image file are labelled per invoice and language", () => {
+    expect(translate("ar", "Share Receipt")).toBe("مشاركة الفاتورة");
+    expect(receiptFileName(42)).toBe("receipt-42.png");
+    expect(receiptLocale("ar")).toContain("gregory");
+  });
+});
