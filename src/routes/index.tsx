@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Minus, Trash2, Printer, Settings, Receipt as ReceiptIcon, X, History } from "lucide-react";
+import { Plus, Minus, Trash2, Share2, Settings, Receipt as ReceiptIcon, X, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,17 +15,26 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
-import { Receipt } from "@/components/Receipt";
-import { Link } from "@tanstack/react-router";
-import { useItems, useShop, saveInvoice, type CartLine, type Item } from "@/lib/receipt-store";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { ShareReceiptDialog, type PreparedReceipt } from "@/components/ShareReceiptDialog";
+import { useLanguage } from "@/lib/language";
+import { renderReceiptPng, receiptFileName, shareReceipt } from "@/lib/receipt-image";
+import {
+  useItems,
+  useShop,
+  saveInvoice,
+  type CartLine,
+  type Item,
+  type ShopInfo,
+} from "@/lib/receipt-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Receipt POS — 80mm Thermal Printer" },
-      { name: "description", content: "Manage items, build orders, and print 80mm thermal receipts." },
-      { property: "og:title", content: "Receipt POS — 80mm Thermal Printer" },
-      { property: "og:description", content: "Manage items, build orders, and print 80mm thermal receipts." },
+      { title: "Receipt POS — 80mm Thermal Receipts" },
+      { name: "description", content: "Manage items, build orders, and share 80mm thermal receipts to your printer app." },
+      { property: "og:title", content: "Receipt POS — 80mm Thermal Receipts" },
+      { property: "og:description", content: "Manage items, build orders, and share 80mm thermal receipts to your printer app." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -38,10 +47,12 @@ function money(n: number) {
 }
 
 function Index() {
+  const { t, language } = useLanguage();
   const { items, add, update, remove } = useItems();
   const { shop, setShop } = useShop();
   const [cart, setCart] = useState<Record<string, number>>({});
-  const [orderNo, setOrderNo] = useState(1);
+  const [orderNo, setOrderNo] = useState<number | null>(null);
+  const [prepared, setPrepared] = useState<PreparedReceipt | null>(null);
 
   const lines: CartLine[] = useMemo(
     () =>
@@ -71,28 +82,45 @@ function Index() {
       return copy;
     });
 
-  const [printing, setPrinting] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  const handlePrint = async () => {
+  const handleShare = async () => {
     if (lines.length === 0) {
-      toast.error("Add at least one item to the order.");
+      toast.error(t("Add at least one item to the order."));
       return;
     }
-    if (printing) return;
-    setPrinting(true);
+    if (busy) return;
+    setBusy(true);
+    let invoiceNo: number;
     try {
-      const invoiceNo = await saveInvoice(lines);
-      setOrderNo(invoiceNo);
-      // Let the receipt re-render with the real invoice number before printing.
-      setTimeout(() => {
-        window.print();
-        setCart({});
-        setPrinting(false);
-        toast.success(`Invoice #${invoiceNo} saved and sent to printer`);
-      }, 100);
+      invoiceNo = await saveInvoice(lines);
     } catch {
-      setPrinting(false);
-      toast.error("Could not save the invoice. Check your connection.");
+      setBusy(false);
+      toast.error(t("Could not save the invoice. Check your connection."));
+      return;
+    }
+    setOrderNo(invoiceNo);
+    setCart({});
+    try {
+      const blob = await renderReceiptPng({
+        shop,
+        lines,
+        orderNo: invoiceNo,
+        createdAt: new Date(),
+        language,
+      });
+      const receipt = {
+        blob,
+        fileName: receiptFileName(invoiceNo),
+        title: `${t("Invoice")} #${invoiceNo}`,
+      };
+      const result = await shareReceipt(receipt.blob, receipt.fileName, receipt.title);
+      if (result === "shared") toast.success(`${t("Invoice saved")} #${invoiceNo}`);
+      else setPrepared(receipt);
+    } catch {
+      toast.error(t("Could not create the receipt image."));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -100,56 +128,57 @@ function Index() {
     <div className="min-h-screen bg-background text-foreground">
       <Toaster richColors position="top-center" />
 
-      {/* Header */}
       <header className="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-3 sm:px-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
               <ReceiptIcon className="h-5 w-5" />
             </div>
-            <div>
-              <h1 className="text-base font-semibold leading-tight">{shop.name || "Receipt POS"}</h1>
-              <p className="text-xs text-muted-foreground">80mm thermal printer ready</p>
+            <div className="min-w-0">
+              <h1 className="truncate text-base font-semibold leading-tight">
+                {t(shop.name || "Receipt POS")}
+              </h1>
+              <p className="hidden text-xs text-muted-foreground sm:block">
+                {t("Ready for 80mm thermal printer")}
+              </p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-1.5 sm:gap-2">
             <Link to="/history">
-              <Button variant="outline" size="sm">
-                <History className="mr-1 h-4 w-4" /> History
+              <Button variant="outline" size="sm" aria-label={t("History")}>
+                <History className="h-4 w-4" />
+                <span className="ms-1 hidden sm:inline">{t("History")}</span>
               </Button>
             </Link>
-            <ManageItemsDialog
-              items={items}
-              onAdd={add}
-              onUpdate={update}
-              onRemove={remove}
-            />
+            <ManageItemsDialog items={items} onAdd={add} onUpdate={update} onRemove={remove} />
+            <LanguageToggle />
             <ShopSettingsDialog shop={shop} setShop={setShop} />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[1fr_360px]">
-        {/* Items grid */}
+      <main className="mx-auto grid max-w-6xl gap-4 px-3 py-4 sm:px-4 lg:grid-cols-[1fr_360px]">
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Tap to add
+              {t("Tap to add")}
             </h2>
-            <span className="text-xs text-muted-foreground">{items.length} items</span>
+            <span className="text-xs text-muted-foreground">
+              {items.length} {t("items")}
+            </span>
           </div>
 
           {items.length === 0 ? (
             <Card className="flex flex-col items-center justify-center gap-3 p-10 text-center">
               <p className="text-sm text-muted-foreground">
-                No items yet. Add your first product to start taking orders.
+                {t("No items yet. Add your first product to start taking orders.")}
               </p>
               <ManageItemsDialog
                 items={items}
                 onAdd={add}
                 onUpdate={update}
                 onRemove={remove}
-                triggerLabel="Add your first item"
+                triggerLabel={t("Add your first item")}
               />
             </Card>
           ) : (
@@ -160,13 +189,11 @@ function Index() {
                   <button
                     key={it.id}
                     onClick={() => inc(it.id)}
-                    className="group relative flex flex-col items-start justify-between rounded-xl border border-border bg-card p-3 text-left transition hover:border-primary hover:shadow-md active:scale-[0.98]"
+                    className="group relative flex flex-col items-start justify-between rounded-xl border border-border bg-card p-3 text-start transition hover:border-primary hover:shadow-md active:scale-[0.98]"
                   >
                     <div className="line-clamp-2 text-sm font-medium">{it.name}</div>
                     <div className="mt-2 flex w-full items-center justify-between">
-                      <span className="text-sm font-semibold text-primary">
-                        {money(it.price)}
-                      </span>
+                      <span className="text-sm font-semibold text-primary">{money(it.price)}</span>
                       {qty > 0 && (
                         <span className="grid h-6 min-w-6 place-items-center rounded-full bg-primary px-2 text-xs font-bold text-primary-foreground">
                           {qty}
@@ -180,41 +207,36 @@ function Index() {
           )}
         </section>
 
-        {/* Cart / order */}
         <aside className="lg:sticky lg:top-[68px] lg:h-[calc(100vh-84px)]">
           <Card className="flex h-full flex-col overflow-hidden p-0">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div>
-                <div className="text-sm font-semibold">Current Order</div>
-                <div className="text-xs text-muted-foreground">Order #{orderNo}</div>
+                <div className="text-sm font-semibold">{t("Current Order")}</div>
+                {orderNo !== null && (
+                  <div className="text-xs text-muted-foreground">
+                    {t("Invoice")} #{orderNo}
+                  </div>
+                )}
               </div>
               {lines.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCart({})}
-                  className="text-muted-foreground"
-                >
-                  <X className="mr-1 h-4 w-4" /> Clear
+                <Button variant="ghost" size="sm" onClick={() => setCart({})} className="text-muted-foreground">
+                  <X className="me-1 h-4 w-4" /> {t("Clear")}
                 </Button>
               )}
             </div>
 
-            <div className="flex-1 overflow-auto px-2 py-2">
+            <div className="min-h-32 flex-1 overflow-auto px-2 py-2">
               {lines.length === 0 ? (
-                <div className="grid h-full place-items-center px-4 text-center text-sm text-muted-foreground">
-                  Tap items on the left to add them to the order.
+                <div className="grid h-full place-items-center px-4 py-6 text-center text-sm text-muted-foreground">
+                  {t("Tap items on the left to add them to the order.")}
                 </div>
               ) : (
                 <ul className="space-y-1">
                   {lines.map((l) => (
-                    <li
-                      key={l.item.id}
-                      className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-muted"
-                    >
+                    <li key={l.item.id} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-muted">
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium">{l.item.name}</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground" dir="ltr">
                           {money(l.item.price)} × {l.qty} = {money(l.item.price * l.qty)}
                         </div>
                       </div>
@@ -223,6 +245,7 @@ function Index() {
                           size="icon"
                           variant="outline"
                           className="h-7 w-7"
+                          aria-label={t("Decrease quantity")}
                           onClick={() => dec(l.item.id)}
                         >
                           <Minus className="h-3 w-3" />
@@ -238,6 +261,7 @@ function Index() {
                           size="icon"
                           variant="outline"
                           className="h-7 w-7"
+                          aria-label={t("Increase quantity")}
                           onClick={() => inc(l.item.id)}
                         >
                           <Plus className="h-3 w-3" />
@@ -251,26 +275,23 @@ function Index() {
 
             <div className="border-t border-border bg-muted/40 p-4">
               <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                <span>Items</span>
+                <span>{t("Items")}</span>
                 <span>{totalQty}</span>
               </div>
               <div className="mb-3 flex items-baseline justify-between">
-                <span className="text-sm font-medium">Total</span>
+                <span className="text-sm font-medium">{t("Total")}</span>
                 <span className="text-2xl font-bold tracking-tight">{money(total)}</span>
               </div>
-              <Button onClick={() => void handlePrint()} disabled={printing} className="w-full" size="lg">
-                <Printer className="mr-2 h-4 w-4" />
-                Print 80mm Receipt
+              <Button onClick={() => void handleShare()} disabled={busy} className="w-full" size="lg">
+                <Share2 className="me-2 h-4 w-4" />
+                {busy ? t("Preparing…") : t("Share Receipt")}
               </Button>
             </div>
           </Card>
         </aside>
       </main>
 
-      {/* Hidden printable receipt (only visible when printing) */}
-      <div className="sr-only print:not-sr-only">
-        <Receipt shop={shop} lines={lines} orderNo={orderNo} />
-      </div>
+      <ShareReceiptDialog receipt={prepared} onClose={() => setPrepared(null)} />
     </div>
   );
 }
@@ -288,41 +309,42 @@ function ManageItemsDialog({
   onRemove: (id: string) => Promise<void>;
   triggerLabel?: string;
 }) {
+  const { t } = useLanguage();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
 
   const submit = async () => {
     const p = parseFloat(price);
     if (!name.trim() || isNaN(p) || p < 0) {
-      toast.error("Enter a valid name and price.");
+      toast.error(t("Enter a valid name and price."));
       return;
     }
     try {
       await onAdd(name, p);
       setName("");
       setPrice("");
-      toast.success("Item added");
+      toast.success(t("Item added"));
     } catch {
-      toast.error("Could not save the item. Check your connection.");
+      toast.error(t("Could not save the item. Check your connection."));
     }
   };
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant={triggerLabel ? "default" : "outline"} size="sm">
-          <Plus className="mr-1 h-4 w-4" />
-          {triggerLabel ?? "Items"}
+        <Button variant={triggerLabel ? "default" : "outline"} size="sm" aria-label={triggerLabel ?? t("Items")}>
+          <Plus className="h-4 w-4" />
+          <span className={triggerLabel ? "ms-1" : "ms-1 hidden sm:inline"}>{triggerLabel ?? t("Items")}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Manage Items</DialogTitle>
+          <DialogTitle>{t("Manage Items")}</DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-[1fr_110px_auto] gap-2">
+        <div className="grid grid-cols-[1fr_96px_auto] gap-2">
           <Input
-            placeholder="Item name"
+            placeholder={t("Item name")}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
@@ -330,38 +352,32 @@ function ManageItemsDialog({
           <Input
             type="number"
             step="0.01"
-            placeholder="Price"
+            placeholder={t("Price")}
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
           />
-          <Button onClick={submit}>Add</Button>
+          <Button onClick={submit}>{t("Add")}</Button>
         </div>
 
         <div className="max-h-80 overflow-auto rounded-md border border-border">
           {items.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">
-              No items yet.
-            </div>
+            <div className="p-6 text-center text-sm text-muted-foreground">{t("No items yet.")}</div>
           ) : (
             <ul className="divide-y divide-border">
               {items.map((it) => (
-                <li key={it.id} className="grid grid-cols-[1fr_110px_auto] items-center gap-2 p-2">
-                  <Input
-                    value={it.name}
-                    onChange={(e) => onUpdate(it.id, { name: e.target.value })}
-                  />
+                <li key={it.id} className="grid grid-cols-[1fr_96px_auto] items-center gap-2 p-2">
+                  <Input value={it.name} onChange={(e) => onUpdate(it.id, { name: e.target.value })} />
                   <Input
                     type="number"
                     step="0.01"
                     value={it.price}
-                    onChange={(e) =>
-                      onUpdate(it.id, { price: parseFloat(e.target.value) || 0 })
-                    }
+                    onChange={(e) => onUpdate(it.id, { price: parseFloat(e.target.value) || 0 })}
                   />
                   <Button
                     size="icon"
                     variant="ghost"
+                    aria-label={t("Delete item")}
                     onClick={() => onRemove(it.id)}
                     className="text-destructive"
                   >
@@ -381,60 +397,73 @@ function ShopSettingsDialog({
   shop,
   setShop,
 }: {
-  shop: ReturnType<typeof useShop>["shop"];
-  setShop: ReturnType<typeof useShop>["setShop"];
+  shop: ShopInfo;
+  setShop: (next: ShopInfo) => Promise<void>;
 }) {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(shop);
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await setShop(draft);
+      toast.success(t("Settings saved"));
+      setOpen(false);
+    } catch {
+      toast.error(t("Could not save settings. Check your connection."));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <Dialog onOpenChange={(o) => o && setDraft(shop)}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) setDraft(shop);
+      }}
+    >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" aria-label={t("Settings")}>
           <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Shop / Receipt Header</DialogTitle>
+          <DialogTitle>{t("Shop / Receipt Header")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div>
-            <Label>Shop name</Label>
-            <Input
-              value={draft.name}
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            />
+          <div className="space-y-1">
+            <Label htmlFor="shop-name">{t("Shop name")}</Label>
+            <Input id="shop-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </div>
-          <div>
-            <Label>Address</Label>
+          <div className="space-y-1">
+            <Label htmlFor="shop-address">{t("Address")}</Label>
             <Input
+              id="shop-address"
               value={draft.address}
               onChange={(e) => setDraft({ ...draft, address: e.target.value })}
             />
           </div>
-          <div>
-            <Label>Phone</Label>
-            <Input
-              value={draft.phone}
-              onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
-            />
+          <div className="space-y-1">
+            <Label htmlFor="shop-phone">{t("Phone")}</Label>
+            <Input id="shop-phone" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
           </div>
-          <div>
-            <Label>Footer message</Label>
+          <div className="space-y-1">
+            <Label htmlFor="shop-footer">{t("Footer message")}</Label>
             <Input
+              id="shop-footer"
               value={draft.footer}
               onChange={(e) => setDraft({ ...draft, footer: e.target.value })}
             />
           </div>
         </div>
         <DialogFooter>
-          <Button
-            onClick={() => {
-              setShop(draft);
-              toast.success("Settings saved");
-            }}
-          >
-            Save
+          <Button onClick={() => void save()} disabled={saving}>
+            {t("Save")}
           </Button>
         </DialogFooter>
       </DialogContent>
