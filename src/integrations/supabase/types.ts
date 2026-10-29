@@ -94,6 +94,33 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_settings: {
+        Row: {
+          address: string
+          footer: string
+          id: number
+          name: string
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          footer?: string
+          id?: number
+          name?: string
+          phone?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          footer?: string
+          id?: number
+          name?: string
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

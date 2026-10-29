@@ -66,6 +66,18 @@ export const arabic: Record<string, string> = {
   "This page didn't load": "تعذر تحميل الصفحة",
   "Something went wrong on our end. You can try refreshing or head back home.": "حدث خطأ. يمكنك المحاولة مجدداً أو العودة إلى الرئيسية.",
   "Try again": "المحاولة مجدداً",
+  "Share Receipt": "مشاركة الفاتورة",
+  "Share": "مشاركة",
+  "Save image": "حفظ الصورة",
+  "Receipt ready": "الفاتورة جاهزة",
+  "Receipt shared": "تمت مشاركة الفاتورة",
+  "Invoice saved": "تم حفظ الفاتورة",
+  "Preparing…": "جارٍ التجهيز…",
+  "Could not create the receipt image.": "تعذر إنشاء صورة الفاتورة.",
+  "Sharing isn't available here. Save the image and open it in your printer app.": "المشاركة غير متاحة هنا. احفظ الصورة وافتحها في تطبيق الطابعة.",
+  "Could not save settings. Check your connection.": "تعذر حفظ الإعدادات. تحقق من اتصالك.",
+  "No invoices yet. Share a receipt and it will appear here.": "لا توجد فواتير بعد. ستظهر الفاتورة هنا بعد مشاركتها.",
+  "Ready for 80mm thermal printer": "جاهز للطابعة الحرارية ٨٠ مم",
 };
 
 export function translate(language: Language, text: string) {
