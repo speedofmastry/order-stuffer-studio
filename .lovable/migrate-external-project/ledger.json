@@ -1,14 +1,68 @@
 {
   "source": "github:Mosasathaliya/order-stuffer (private, fetched read-only via GitHub connector)",
   "capabilities": [
-    {"capability": "code", "source": "TanStack Start app: POS screen (/), invoice history (/history), 80mm receipt, Code128 barcode, EN/AR language", "outcome": "migrate", "status": "in_progress", "next_action": "Copy app files onto current template"},
-    {"capability": "schema", "source": "items, invoices, invoice_items tables (public, no auth)", "outcome": "migrate", "status": "pending", "next_action": "Apply migration in Lovable Cloud"},
-    {"capability": "records", "source": "Existing items/invoices in old backend", "outcome": "migrate", "status": "pending", "next_action": "Ask user for CSV exports of items, invoices, invoice_items or skip"},
-    {"capability": "auth", "source": "None - app has no sign-in", "outcome": "not_applicable", "status": "verified", "next_action": "none"},
-    {"capability": "authorization", "source": "Open RLS policies for anon/authenticated", "outcome": "migrate", "status": "pending", "next_action": "Recreate same policies"},
-    {"capability": "storage", "source": "None", "outcome": "not_applicable", "status": "verified", "next_action": "none"},
-    {"capability": "shop settings", "source": "Device localStorage", "outcome": "migrate", "status": "pending", "next_action": "Kept as-is in code"},
-    {"capability": "external providers / webhooks / schedules / secrets", "source": "None detected", "outcome": "not_applicable", "status": "verified", "next_action": "none"},
-    {"capability": "verification", "source": "-", "outcome": "verify", "status": "pending", "next_action": "Add item, print receipt, view history in preview"}
+    {
+      "capability": "code",
+      "source": "TanStack Start app: POS screen (/), invoice history (/history), 80mm receipt, Code128 barcode, EN/AR language",
+      "outcome": "migrate",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "schema",
+      "source": "items, invoices, invoice_items tables (public, no auth)",
+      "outcome": "migrate",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "records",
+      "source": "Existing items/invoices in old backend",
+      "outcome": "migrate",
+      "status": "pending",
+      "next_action": "Waiting on user: CSV exports of items, invoices, invoice_items from old Lovable project, or skip"
+    },
+    {
+      "capability": "auth",
+      "source": "None - app has no sign-in",
+      "outcome": "not_applicable",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "authorization",
+      "source": "Open RLS policies for anon/authenticated",
+      "outcome": "migrate",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "storage",
+      "source": "None",
+      "outcome": "not_applicable",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "shop settings",
+      "source": "Device localStorage",
+      "outcome": "migrate",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "external providers / webhooks / schedules / secrets",
+      "source": "None detected",
+      "outcome": "not_applicable",
+      "status": "verified",
+      "next_action": "none"
+    },
+    {
+      "capability": "verification",
+      "source": "-",
+      "outcome": "verify",
+      "status": "verified",
+      "next_action": "none"
+    }
   ]
 }
