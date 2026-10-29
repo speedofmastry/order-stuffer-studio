@@ -8,6 +8,13 @@
       "when": 1793265514414,
       "tag": "0000_create_items_and_invoices",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793265592845,
+      "tag": "0001_remove_test_rows",
+      "breakpoints": true
     }
   ]
 }

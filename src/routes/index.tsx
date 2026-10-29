@@ -46,8 +46,8 @@ function Index() {
   const lines: CartLine[] = useMemo(
     () =>
       items
-        .filter((i) => cart[i.id] > 0)
-        .map((i) => ({ item: i, qty: cart[i.id] })),
+        .filter((i) => (cart[i.id] ?? 0) > 0)
+        .map((i) => ({ item: i, qty: cart[i.id] ?? 0 })),
     [items, cart],
   );
 
