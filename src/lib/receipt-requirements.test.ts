@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { RECEIPT_BARCODE_VALUE, receiptBarcodeBits } from "./receipt-barcode";
 import { translate } from "./language";
 
