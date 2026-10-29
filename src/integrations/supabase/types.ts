@@ -14,7 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      invoice_items: {
+        Row: {
+          id: string
+          invoice_id: string
+          item_name: string
+          line_total: number
+          qty: number
+          unit_price: number
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          item_name: string
+          line_total?: number
+          qty?: number
+          unit_price?: number
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          item_name?: string
+          line_total?: number
+          qty?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          created_at: string
+          id: string
+          invoice_no: number
+          item_count: number
+          total: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invoice_no?: never
+          item_count?: number
+          total?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invoice_no?: never
+          item_count?: number
+          total?: number
+        }
+        Relationships: []
+      }
+      items: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          price?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
